@@ -9,3 +9,7 @@ This cigarette smokers problem has extra constraints:
 - smokers have some money to begin with
 - if smoker has no money to buy ingredients he must wait for price change or money from sold ingredients
 - smokers use message passing to transfer money for ingredients
+
+### You can run this project using
+
+```cargo run```
