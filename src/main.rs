@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
+use std::{fmt, thread};
 use std::time::Duration;
 use rand::Rng;
 
@@ -10,9 +10,13 @@ struct Prices {
     matches: u32,
 }
 
+impl fmt::Display for Prices {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(Tobacco: {}, Paper: {}, Matches: {})", self.tobacco, self.paper, self.matches)
+    }
+}
 fn main() {
-
-    // prices of ingredients [tobacco, paper, matches]
+    // prices of ingredients
     let prices = Arc::new(Mutex::new(Prices {
         tobacco: 0,
         paper: 0,
@@ -20,9 +24,9 @@ fn main() {
     }));
 
     // money of smokers
-    let money_of_smoker_with_tobacco = Arc::new(Mutex::new(100));
-    let money_of_smoker_with_paper = Arc::new(Mutex::new(100));
-    let money_of_smoker_with_matches = Arc::new(Mutex::new(100));
+    let money_of_smoker_with_tobacco = Arc::new(Mutex::new(30));
+    let money_of_smoker_with_paper = Arc::new(Mutex::new(30));
+    let money_of_smoker_with_matches = Arc::new(Mutex::new(30));
 
     // create channels for sending money
     let (paper_to_tobacco, receive_tobacco) = mpsc::channel::<u32>();
@@ -40,14 +44,15 @@ fn main() {
             {
                 let mut price = prices1.lock().unwrap();
 
-                // generate random prices
                 let mut rng = rand::thread_rng();
+                // generate random prices
                 price.tobacco = rng.gen_range(1..10);
                 price.paper = rng.gen_range(1..10);
                 price.matches = rng.gen_range(1..10);
-                println!("Current prices: {:?}", price);
+
+                println!("\nCurrent prices: {}\n", price);
             }
-            thread::sleep(Duration::from_millis(2000));
+            thread::sleep(Duration::from_millis(10000));
         }
     });
 
@@ -62,24 +67,19 @@ fn main() {
 
             {
                 let prices = prices1.lock().unwrap();
-
                 if prices.matches + prices.paper > *money {
                     println!("Tobacco couldn't buy ingredients");
                 } else {
                     *money -= prices.paper + prices.matches;
 
-                    println!("Tobacco bought ingredients, current money: {}", money);
+                    println!("Tobacco bought ingredients for: {}, current money: {}", prices.paper + prices.matches, money);
 
                     // send money for ingredients
                     tobacco_to_paper.send(prices.paper).unwrap();
                     tobacco_to_matches.send(prices.matches).unwrap();
-                    println!("Smoker tobacco sent money: {}", prices.paper + prices.matches);
-
-                    // print!("Smoker tobacco is smoking");
                 }
             }
-            thread::sleep(Duration::from_millis(2000));
-
+            thread::sleep(Duration::from_millis(5000));
         }
     });
 
@@ -88,7 +88,7 @@ fn main() {
         loop {
             let mut money = money_of_smoker_with_paper.lock().unwrap();
             while let Ok(payment) = receive_paper.try_recv(){
-                // println!("Smoker paper received money: {}", payment);
+                println!("Paper received money: {}", payment);
                 *money += payment;
             }
 
@@ -99,17 +99,14 @@ fn main() {
                 } else {
                     *money -= prices.tobacco + prices.matches;
 
-                    println!("Paper bought ingredients, current money: {}", money);
+                    println!("Paper bought ingredients for: {}, current money: {}", prices.matches + prices.tobacco, money);
 
                     // send money for ingredients
                     paper_to_matches.send(prices.matches).unwrap();
                     paper_to_tobacco.send(prices.tobacco).unwrap();
-
-                    println!("Paper sent money for tobacco: {}", prices.tobacco);
                 }
             }
-
-            thread::sleep(Duration::from_millis(2000));
+            thread::sleep(Duration::from_millis(5000));
         }
     });
 
@@ -119,11 +116,10 @@ fn main() {
             let mut money = money_of_smoker_with_matches.lock().unwrap();
 
             while let Ok(payment) = receive_matches.try_recv() {
-                // println!("Smoker matches received money: {}", payment);
+                println!("Matches received money: {}", payment);
                 *money += payment;
             }
 
-            // *money += receive_matches.recv().unwrap();
             {
                 let prices = prices1.lock().unwrap();
 
@@ -131,16 +127,14 @@ fn main() {
                     println!("Matches couldn't buy ingredients");
                 } else {
                     *money -= prices.tobacco + prices.paper;
+                    println!("Matches bought ingredients for: {}, current money: {}", prices.paper + prices.tobacco, money);
 
-                    println!("Matches bought ingredients, current money: {}", money);
                     // send money for ingredients
                     matches_to_paper.send(prices.paper).unwrap();
                     matches_to_tobacco.send(prices.tobacco).unwrap();
-                    println!("Matches sent money for tobacco: {}", prices.tobacco)
-
                 }
             }
-            thread::sleep(Duration::from_millis(2000));
+            thread::sleep(Duration::from_millis(5000));
         }
     });
 
@@ -148,5 +142,4 @@ fn main() {
     smoker_with_paper.join().unwrap();
     smoker_with_tobacco.join().unwrap();
     smoker_with_matches.join().unwrap();
-
 }
