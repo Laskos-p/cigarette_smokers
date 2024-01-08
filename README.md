@@ -1,6 +1,6 @@
 # Cigarette smokers problem in Rust
 
-Solution to cigarette smokers problem in Rust using Mutexes and message passing with channels.
+Solution to cigarette smokers problem in Rust using Mutexes and message passing using channels.
 
 This cigarette smokers problem has extra constraints:
 - agent sets the prices of ingredients
